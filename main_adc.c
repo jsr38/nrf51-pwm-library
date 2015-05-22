@@ -26,19 +26,15 @@
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
 #include "nrf_pwm.h"
-#include "boards.h"
-
-bool    new_adc_sample_ready = false;
-uint8_t adc_result;
 
 int main(void)
-{     
+{
     nrf_pwm_config_t pwm_config = PWM_DEFAULT_CONFIG;
     
     pwm_config.mode             = PWM_MODE_LED_255;
     pwm_config.num_channels     = 2;
-    pwm_config.gpio_num[0]      = LED_1;
-    pwm_config.gpio_num[1]      = LED_2;  
+    pwm_config.gpio_num[0]      = 8;
+    pwm_config.gpio_num[1]      = 9;  
 
     // Initialize the PWM library
     nrf_pwm_init(&pwm_config);
@@ -59,15 +55,6 @@ int main(void)
     
     while (true)
     {
-        // Update the PWM when this flag is set by the ADC interrupt
-        if(new_adc_sample_ready)
-        {
-            new_adc_sample_ready = 0;
-            
-            // Update the PWM output based on the previous ADC sample
-            nrf_pwm_set_value(0, adc_result);
-            nrf_pwm_set_value(1, 255 - adc_result);
-        }
     }
 }
 
@@ -75,13 +62,10 @@ void ADC_IRQHandler(void)
 {
     // Clear the END event
     NRF_ADC->EVENTS_END = 0;
-    
-    // Read the ADC result
-    adc_result = NRF_ADC->RESULT;
-    
-    // Set a flag to have the PWM updated in main
-    new_adc_sample_ready = 1;
-
+    // Read the ADC result, and update the PWM channels accordingly
+    uint8_t tmp = NRF_ADC->RESULT;
+    nrf_pwm_set_value(0, tmp);
+    nrf_pwm_set_value(1, 255 - tmp);
     // Trigger a new ADC sampling
     NRF_ADC->TASKS_START = 1;
 }
